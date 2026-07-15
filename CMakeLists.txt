@@ -8,6 +8,9 @@ set(CMAKE_Swift_LANGUAGE_VERSION 5.9)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "13.0")
 
+# Add Swift module path
+list(APPEND CMAKE_MODULE_PATH "/usr/local/share/cmake/Modules")
+
 # Find required packages
 find_package(Swift REQUIRED)
 
