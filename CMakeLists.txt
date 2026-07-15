@@ -11,8 +11,8 @@ set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "13.0")
 # Add Swift module path
 list(APPEND CMAKE_MODULE_PATH "/usr/local/share/cmake/Modules")
 
-# Find required packages
-find_package(Swift REQUIRED)
+# Enable Swift language support (native CMake support)
+enable_language(Swift)
 
 # Define source files
 set(SOURCES
