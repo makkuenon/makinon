@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(IPASigner LANGUAGES Swift)
 
 # Set Swift language version
-set(CMAKE_Swift_LANGUAGE_VERSION 5.9)
+set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
 # Set deployment target
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
@@ -16,7 +16,6 @@ enable_language(Swift)
 
 # Define source files
 set(SOURCES
-    Sources/Main.swift
     Sources/IPASigner/IPASignerApp.swift
     Sources/IPASigner/ContentView.swift
     Sources/IPASigner/Views/SigningView.swift
