@@ -39,11 +39,11 @@ set_target_properties(IPASigner PROPERTIES
 )
 
 # Link frameworks
+# Note: CommonCrypto is part of the Security framework, not a standalone framework
 target_link_libraries(IPASigner PUBLIC
     "-framework Foundation"
     "-framework SwiftUI"
     "-framework Security"
-    "-framework CommonCrypto"
 )
 
 # SwiftUI configuration
