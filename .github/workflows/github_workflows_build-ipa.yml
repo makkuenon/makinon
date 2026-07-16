@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -GXcode
+          cmake .. -GXcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos
           cd ..
 
       - name: Build with xcodebuild
