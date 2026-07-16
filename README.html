@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SideSigner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ——— Theme ——— */
+:root {
+  --bg: #05060a;
+  --bg-alt: #0b0d14;
+  --accent: #4af3ff;
+  --accent-soft: rgba(74,243,255,0.15);
+  --text: #f5f7ff;
+  --muted: #8b90a5;
+  --radius: 14px;
+}
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #15192b 0, #05060a 55%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 20px;
+}
+.page {
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* ——— Header ——— */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.cube {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: conic-gradient(from 210deg,#4af3ff,#7bffb8,#ffe66b,#ff4a7a,#4af3ff);
+  padding: 2px;
+}
+.cube-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: #05060a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ——— Layout ——— */
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+.card {
+  background: var(--bg-alt);
+  border-radius: var(--radius);
+  border: 1px solid #1b1f2f;
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+}
+
+/* ——— Upload ——— */
+.upload-zone {
+  border: 1px dashed #2b3148;
+  border-radius: var(--radius);
+  padding: 20px;
+  cursor: pointer;
+}
+.upload-zone:hover {
+  border-color: var(--accent);
+}
+
+/* ——— Certificate Library ——— */
+.cert-item {
+  padding: 10px;
+  border-bottom: 1px solid #1b1f2f;
+  display: flex;
+  justify-content: space-between;
+}
+.cert-actions button {
+  margin-left: 6px;
+}
+
+/* ——— Buttons ——— */
+.btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #020308;
+  font-weight: 600;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #262b3f;
+  color: var(--muted);
+}
+
+/* ——— Console ——— */
+.console {
+  background: #05060a;
+  border: 1px solid #1b1f2f;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 12px;
+  height: 160px;
+  overflow-y: auto;
+}
+</style>
+</head>
+
+<body>
+<div class="page">
+
+<header class="header">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="cube"><div class="cube-inner">GD</div></div>
+    <div>
+      <div style="font-weight:600;">SideSigner</div>
+      <div style="font-size:12px;color:var(--muted);">SideStore‑style IPA signer</div>
+    </div>
+  </div>
+</header>
+
+<div class="grid">
+
+<!-- ——— Left: Signing ——— -->
+<section class="card">
+  <h3>IPA Signing</h3>
+
+  <div class="upload-zone" id="ipaDrop">
+    <div>Select IPA</div>
+    <input type="file" id="ipaInput" accept=".ipa" hidden>
+  </div>
+
+  <h4>Certificate</h4>
+  <select id="certSelect"></select>
+
+  <h4>Options</h4>
+  <label>Signing mode</label>
+  <select id="signMode">
+    <option value="free">Apple ID (7 days)</option>
+    <option value="dev">Developer (1 year)</option>
+    <option value="enterprise">Enterprise</option>
+  </select>
+
+  <button class="btn btn-primary" id="signBtn">Sign IPA</button>
+
+  <div class="console" id="consoleLog">Ready.</div>
+</section>
+
+<!-- ——— Right: Certificate Library ——— -->
+<aside class="card">
+  <h3>Certificate Library</h3>
+
+  <div id="certList"></div>
+
+  <button class="btn btn-ghost" id="addCertBtn">Add Certificate</button>
+</aside>
+
+</div>
+</div>
+
+<script>
+/* ——— Certificate Library ——— */
+let certs = JSON.parse(localStorage.getItem("certs") || "[]");
+
+function renderCerts() {
+  const list = document.getElementById("certList");
+  const select = document.getElementById("certSelect");
+  list.innerHTML = "";
+  select.innerHTML = "";
+
+  certs.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "cert-item";
+    row.innerHTML = `
+      <div>${c.name}</div>
+      <div class="cert-actions">
+        <button onclick="deleteCert('${c.id}')">Delete</button>
+      </div>
+    `;
+    list.appendChild(row);
+
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    select.appendChild(opt);
+  });
+}
+
+function deleteCert(id) {
+  certs = certs.filter(c => c.id !== id);
+  localStorage.setItem("certs", JSON.stringify(certs));
+  renderCerts();
+}
+
+document.getElementById("addCertBtn").onclick = async () => {
+  const file = await pickFile(".p12,.pfx");
+  if (!file) return;
+
+  const name = prompt("Certificate name:");
+  const password = prompt("Certificate password (optional):");
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    certs.push({
+      id: crypto.randomUUID(),
+      name,
+      p12: reader.result,
+      password
+    });
+    localStorage.setItem("certs", JSON.stringify(certs));
+    renderCerts();
+  };
+  reader.readAsDataURL(file);
+};
+
+function pickFile(accept) {
+  return new Promise(resolve => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.onchange = () => resolve(input.files[0]);
+    input.click();
+  });
+}
+
+/* ——— IPA Upload ——— */
+const ipaDrop = document.getElementById("ipaDrop");
+const ipaInput = document.getElementById("ipaInput");
+let selectedIPA = null;
+
+ipaDrop.onclick = () => ipaInput.click();
+ipaInput.onchange = e => {
+  selectedIPA = e.target.files[0];
+  log("Selected IPA: " + selectedIPA.name);
+};
+
+/* ——— Logging ——— */
+function log(msg) {
+  const c = document.getElementById("consoleLog");
+  c.textContent += "\n" + msg;
+  c.scrollTop = c.scrollHeight;
+}
+
+/* ——— Signing ——— */
+document.getElementById("signBtn").onclick = async () => {
+  if (!selectedIPA) return log("Select an IPA first.");
+
+  const certId = document.getElementById("certSelect").value;
+  const cert = certs.find(c => c.id === certId);
+  if (!cert) return log("Select a certificate.");
+
+  log("Uploading IPA…");
+
+  const form = new FormData();
+  form.append("ipa", selectedIPA);
+  form.append
