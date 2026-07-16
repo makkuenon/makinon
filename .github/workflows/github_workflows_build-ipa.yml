@@ -46,6 +46,7 @@ jobs:
             -derivedDataPath build/DerivedData \
             -destination generic/platform=iOS \
             -archivePath build/IPASigner.xcarchive \
+            -allowProvisioningUpdates \
             archive
 
       - name: Export IPA
