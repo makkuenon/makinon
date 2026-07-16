@@ -50,7 +50,7 @@ class IPASigningService: ObservableObject {
             
             // Step 3: Get metadata
             signingProgress = 0.3
-            let metadata = try parseIPAMetadata(at: extractionPath)
+            _ = try parseIPAMetadata(at: extractionPath)
             
             // Step 4: Replace provisioning profile
             signingProgress = 0.4
@@ -74,8 +74,8 @@ class IPASigningService: ObservableObject {
     }
     
     private func parseIPAMetadata(at path: String) throws -> IPAMetadata {
-        let infoPlistPath = "\(path)/Payload/*/Info.plist"
-        // Parse and return metadata
+        // TODO: Parse the Info.plist from the extracted IPA
+        // The infoPlistPath would be: "\(path)/Payload/*/Info.plist"
         return IPAMetadata(
             bundleIdentifier: "com.example.app",
             version: "1.0",
