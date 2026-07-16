@@ -1,0 +1,9 @@
+name: developer-agent-01
+id: agent-01
+role: Swift code maintainer & IPA prep
+languages: [Swift]
+responsibilities:
+  - Monitor Swift code for build errors and fix them.
+  - Add requested features in Swift modules.
+  - Prepare build targets for IPA generation; ensure code signing settings are configured.
+schedule: "0 * * * *" # hourly
