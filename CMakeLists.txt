@@ -4,7 +4,9 @@ project(IPASigner LANGUAGES Swift)
 # Set Swift language version
 set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
-# Set deployment target
+# Set iOS deployment target
+set(CMAKE_SYSTEM_NAME iOS)
+set(CMAKE_OSX_SYSROOT iphoneos)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "13.0")
 
