@@ -2,4 +2,28 @@
 
 This file lists the agent configuration files added to this repository.
 
-agents:
+{
+  "agents": [
+    "agent-01.yml",
+    "agent-02.yml",
+    "agent-03.yml",
+    "agent-04.yml",
+    "agent-05.yml",
+    "agent-06.yml",
+    "agent-07.yml",
+    "agent-08.yml",
+    "agent-09.yml",
+    "agent-10.yml",
+    "agent-11.yml",
+    "agent-12.yml",
+    "agent-13.yml",
+    "agent-14.yml",
+    "agent-15.yml",
+    "agent-16.yml",
+    "agent-17.yml",
+    "agent-18.yml",
+    "agent-19.yml",
+    "agent-20.yml"
+  ]
+}
+
