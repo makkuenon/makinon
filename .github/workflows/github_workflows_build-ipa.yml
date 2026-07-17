@@ -1,4 +1,4 @@
-name: Build iOS IPA (Xcode + CMake Core)
+name: Build iOS IPA (Auto Xcode Project)
 
 on:
   push:
@@ -16,12 +16,6 @@ jobs:
         uses: actions/checkout@v4
 
       # ---------------------------------------------------------
-      # XCODE LOGIC REPLACER AGENT
-      # ---------------------------------------------------------
-      - name: Run Xcode Logic Replacer Agent
-        uses: ./.github/actions/xcode-agent
-
-      # ---------------------------------------------------------
       # BUILD SIGNING ENGINE (CMAKE)
       # ---------------------------------------------------------
       - name: Build signing engine (CMake)
@@ -30,6 +24,51 @@ jobs:
           cd build
           cmake .. -GXcode
           cmake --build . --config Release
+
+      # ---------------------------------------------------------
+      # GENERATE XCODE PROJECT
+      # ---------------------------------------------------------
+      - name: Generate Xcode project
+        run: |
+          mkdir -p App
+          cd App
+
+          # Create basic Xcode project structure
+          swift package init --type executable
+
+          # Replace Package.swift with iOS app settings
+          cat > Package.swift << 'EOF'
+          // swift-tools-version: 5.10
+          import PackageDescription
+
+          let package = Package(
+              name: "IPASigner",
+              platforms: [
+                  .iOS(.v13)
+              ],
+              products: [
+                  .executable(name: "IPASigner", targets: ["IPASigner"])
+              ],
+              dependencies: [],
+              targets: [
+                  .executableTarget(
+                      name: "IPASigner",
+                      dependencies: [],
+                      path: "."
+                  )
+              ]
+          )
+          EOF
+
+          # Inject SwiftUI app files
+          cp ../App/IPASignerApp.swift .
+          cp ../App/ContentView.swift .
+          cp ../App/SigningView.swift .
+          cp ../App/SettingsView.swift .
+          cp ../App/Info.plist .
+
+          # Generate Xcode project
+          swift package generate-xcodeproj
 
       # ---------------------------------------------------------
       # BUILD iOS APP (XCODE)
@@ -58,15 +97,6 @@ jobs:
             -exportOptionsPlist exportOptions.plist
 
       # ---------------------------------------------------------
-      # ZIP ARCHIVE
-      # ---------------------------------------------------------
-      - name: Zip XCArchive
-        run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            "build/IPASigner.xcarchive" \
-            "build/output/IPASigner.xcarchive.zip"
-
-      # ---------------------------------------------------------
       # UPLOAD ARTIFACTS
       # ---------------------------------------------------------
       - name: Upload build artifacts
@@ -75,14 +105,3 @@ jobs:
           name: makinon-build
           path: build/output/**
           retention-days: 30
-
-      # ---------------------------------------------------------
-      # RELEASE
-      # ---------------------------------------------------------
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: build/output/*.ipa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
