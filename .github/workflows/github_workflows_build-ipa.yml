@@ -1,4 +1,4 @@
-name: Build IPA
+name: Build iOS IPA (Xcode + CMake Core)
 
 on:
   push:
@@ -12,44 +12,42 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+      # ---------------------------------------------------------
+      # XCODE LOGIC REPLACER AGENT
+      # ---------------------------------------------------------
+      - name: Run Xcode Logic Replacer Agent
+        uses: ./.github/actions/xcode-agent
 
-      - name: Install dependencies
-        run: |
-          brew install cmake ninja
-
-      - name: Generate Xcode project with CMake
+      # ---------------------------------------------------------
+      # BUILD SIGNING ENGINE (CMAKE)
+      # ---------------------------------------------------------
+      - name: Build signing engine (CMake)
         run: |
           mkdir -p build
           cd build
-          cmake .. \
-            -GXcode \
-            -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT=iphoneos \
-            -DCMAKE_OSX_ARCHITECTURES=arm64
-          cd ..
+          cmake .. -GXcode
+          cmake --build . --config Release
 
-      - name: Build archive
+      # ---------------------------------------------------------
+      # BUILD iOS APP (XCODE)
+      # ---------------------------------------------------------
+      - name: Build iOS app (Xcode)
         run: |
           xcodebuild \
-            -project build/IPASigner.xcodeproj \
+            -project App/IPASigner.xcodeproj \
             -scheme IPASigner \
+            -sdk iphoneos \
             -configuration Release \
-            -derivedDataPath build/DerivedData \
             -archivePath build/IPASigner.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
             archive
 
+      # ---------------------------------------------------------
+      # EXPORT IPA
+      # ---------------------------------------------------------
       - name: Export IPA
         run: |
           mkdir -p build/output
@@ -59,12 +57,18 @@ jobs:
             -exportPath build/output \
             -exportOptionsPlist exportOptions.plist
 
+      # ---------------------------------------------------------
+      # ZIP ARCHIVE
+      # ---------------------------------------------------------
       - name: Zip XCArchive
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
             "build/IPASigner.xcarchive" \
             "build/output/IPASigner.xcarchive.zip"
 
+      # ---------------------------------------------------------
+      # UPLOAD ARTIFACTS
+      # ---------------------------------------------------------
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -72,12 +76,13 @@ jobs:
           path: build/output/**
           retention-days: 30
 
+      # ---------------------------------------------------------
+      # RELEASE
+      # ---------------------------------------------------------
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: build/output/*.ipa
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
