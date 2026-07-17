@@ -8,10 +8,8 @@ set(CMAKE_OSX_SYSROOT iphoneos)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "13.0")
 
-# 🔥 Critical fix: GitHub runners do NOT support arm64e
+# Force correct architecture
 set(CMAKE_OSX_ARCHITECTURES "arm64")
-
-list(APPEND CMAKE_MODULE_PATH "/usr/local/share/cmake/Modules")
 
 enable_language(Swift)
 
@@ -32,6 +30,11 @@ add_executable(IPASigner ${SOURCES})
 set_target_properties(IPASigner PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
+
+    # 🔥 CRITICAL FIX
+    XCODE_ATTRIBUTE_PRODUCT_TYPE "com.apple.product-type.application"
+    XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+
     XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.makinon.ipasigner"
     XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
 )
