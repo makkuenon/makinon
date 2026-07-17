@@ -15,17 +15,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ---------------------------------------------------------
-      # AUTO FIXER AGENT
-      # ---------------------------------------------------------
       - name: Run Auto Fixer Agent
         run: |
           echo "🔧 Auto-fixer for makinon starting..."
 
-          # Remove conflicting CLI entrypoints
           find . -maxdepth 3 -type f -name "main.swift" -delete
 
-          # Create Core folder at repo root
           mkdir -p Core
 
           cat > Core/IPAFile.swift << 'EOF'
@@ -67,7 +62,6 @@ public final class FileHandler {
 }
 EOF
 
-          # Root-level CMakeLists
           cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.21)
 project(MakinonCore LANGUAGES Swift)
@@ -87,7 +81,6 @@ set_target_properties(MakinonCore PROPERTIES
 )
 EOF
 
-          # Create SwiftUI App folder
           mkdir -p App
 
           cat > App/IPASignerApp.swift << 'EOF'
@@ -132,21 +125,14 @@ EOF
 </plist>
 EOF
 
-      # ---------------------------------------------------------
-      # AUTO COMMIT FIXES
-      # ---------------------------------------------------------
       - name: Commit Fixes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git add Core App CMakeLists.txt
           git commit -m "Auto-fix: Core/App structure + CMakeLists for Xcode + IPA export prep" || echo "No changes"
           git push || echo "Nothing to push"
 
-      # ---------------------------------------------------------
-      # BUILD SWIFT CORE
-      # ---------------------------------------------------------
       - name: Build Swift Core (CMake)
         run: |
           mkdir -p build
@@ -154,18 +140,12 @@ EOF
           cmake .. -GXcode
           cmake --build . --config Release
 
-      # ---------------------------------------------------------
-      # GENERATE XCODE PROJECT
-      # ---------------------------------------------------------
       - name: Generate Xcode Project
         run: |
           cd App
           swift package init --type executable
           swift package generate-xcodeproj
 
-      # ---------------------------------------------------------
-      # BUILD iOS APP
-      # ---------------------------------------------------------
       - name: Build iOS App
         run: |
           xcodebuild \
@@ -177,14 +157,10 @@ EOF
             CODE_SIGNING_ALLOWED=NO \
             archive
 
-      # ---------------------------------------------------------
-      # EXPORT IPA
-      # ---------------------------------------------------------
       - name: Export IPA
         run: |
           mkdir -p build/output
 
-          # Minimal exportOptions.plist
           cat > exportOptions.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -207,9 +183,6 @@ EOF
             -exportPath build/output \
             -exportOptionsPlist exportOptions.plist
 
-      # ---------------------------------------------------------
-      # UPLOAD IPA ARTIFACT
-      # ---------------------------------------------------------
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
