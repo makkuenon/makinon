@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,52 +22,54 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Setup CMake
-        run: |
-          brew install cmake
-
       - name: Install dependencies
         run: |
-          brew install ninja
+          brew install cmake ninja
 
       - name: Generate Xcode project with CMake
         run: |
           mkdir -p build
           cd build
-          cmake .. -GXcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos
+          cmake .. \
+            -GXcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64
           cd ..
 
-      - name: Build with xcodebuild
+      - name: Build archive
         run: |
           xcodebuild \
             -project build/IPASigner.xcodeproj \
             -scheme IPASigner \
             -configuration Release \
             -derivedDataPath build/DerivedData \
-            -destination generic/platform=iOS \
             -archivePath build/IPASigner.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             archive
 
-      - name: Package archive (zip)
+      - name: Export IPA
         run: |
           mkdir -p build/output
-          if [ -d "build/IPASigner.xcarchive" ]; then
-            ditto -c -k --sequesterRsrc --keepParent "build/IPASigner.xcarchive" "build/output/IPASigner.xcarchive.zip"
-          else
-            echo "Archive not found, skipping zip"
-            exit 1
-          fi
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/IPASigner.xcarchive \
+            -exportPath build/output \
+            -exportOptionsPlist exportOptions.plist
+
+      - name: Zip XCArchive
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/IPASigner.xcarchive" \
+            "build/output/IPASigner.xcarchive.zip"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: makinon-build
-          path: |
-            build/output/*.ipa
-            build/output/*.xcarchive.zip
+          path: build/output/**
           retention-days: 30
 
       - name: Create Release
