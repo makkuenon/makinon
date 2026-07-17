@@ -1,4 +1,4 @@
-name: Auto Fix + Xcode Build
+name: Auto Fix Repo + Xcode Build
 
 on:
   push:
@@ -16,30 +16,28 @@ jobs:
       # ---------------------------------------------------------
       # AUTO FIXER AGENT
       # ---------------------------------------------------------
-      - name: Run Fixer Agent
+      - name: Run Auto Fixer Agent
         run: |
           echo "🔧 Running auto-fixer..."
 
-          # Remove conflicting Swift CLI files
-          rm -f main.swift
-          rm -f */main.swift || true
-          rm -f Sources/main.swift || true
+          # Detect root folder containing Swift files
+          ROOT=$(find . -maxdepth 2 -type f -name "*.swift" -print0 | xargs -0 dirname | head -n 1)
+          echo "📁 Detected Swift root: $ROOT"
 
-          # Ensure Core folder exists
+          # Remove conflicting CLI main.swift files
+          find "$ROOT" -maxdepth 2 -type f -name "main.swift" -delete
+
+          # Create Core folder
           mkdir -p Core
 
-          # Add missing Swift core files
+          # Add Swift core files
           cat > Core/IPAFile.swift << 'EOF'
 import Foundation
-
-public struct IPAFile {
-    public let url: URL
-}
+public struct IPAFile { public let url: URL }
 EOF
 
           cat > Core/SigningConfig.swift << 'EOF'
 import Foundation
-
 public struct SigningConfig {
     public let certificate: String
     public let profile: String
@@ -48,10 +46,8 @@ EOF
 
           cat > Core/IPASigningService.swift << 'EOF'
 import Foundation
-
 public final class IPASigningService {
     public init() {}
-
     public func sign(ipa: IPAFile, config: SigningConfig) {
         print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
     }
@@ -60,17 +56,13 @@ EOF
 
           cat > Core/CertificateManager.swift << 'EOF'
 import Foundation
-
 public final class CertificateManager {
-    public func load() -> String {
-        return "DeveloperCertificate"
-    }
+    public func load() -> String { "DeveloperCertificate" }
 }
 EOF
 
           cat > Core/FileHandler.swift << 'EOF'
 import Foundation
-
 public final class FileHandler {
     public func exists(_ url: URL) -> Bool {
         FileManager.default.fileExists(atPath: url.path)
@@ -78,14 +70,14 @@ public final class FileHandler {
 }
 EOF
 
-          # Patch CMakeLists
+          # Patch CMakeLists based on actual repo root
           cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.21)
-project(IPASignerCore LANGUAGES Swift)
+project(IPASignCore LANGUAGES Swift)
 
 set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
-add_library(IPASignerCore STATIC
+add_library(IPASignCore STATIC
     Core/IPAFile.swift
     Core/SigningConfig.swift
     Core/IPASigningService.swift
@@ -93,30 +85,26 @@ add_library(IPASignerCore STATIC
     Core/FileHandler.swift
 )
 
-set_target_properties(IPASignerCore PROPERTIES
+set_target_properties(IPASignCore PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
 )
 EOF
 
-          # Create SwiftUI app folder
+          # Create SwiftUI App folder
           mkdir -p App
 
           cat > App/IPASignerApp.swift << 'EOF'
 import SwiftUI
-
 @main
 struct IPASignerApp: App {
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+        WindowGroup { ContentView() }
     }
 }
 EOF
 
           cat > App/ContentView.swift << 'EOF'
 import SwiftUI
-
 struct ContentView: View {
     var body: some View {
         Text("IPASign iOS App")
@@ -154,4 +142,23 @@ EOF
           cmake --build . --config Release
 
       # ---------------------------------------------------------
-      #
+      # GENERATE XCODE PROJECT
+      # ---------------------------------------------------------
+      - name: Generate Xcode Project
+        run: |
+          cd App
+          swift package init --type executable
+          swift package generate-xcodeproj
+
+      # ---------------------------------------------------------
+      # BUILD iOS APP
+      # ---------------------------------------------------------
+      - name: Build iOS App
+        run: |
+          xcodebuild \
+            -project App/IPASigner.xcodeproj \
+            -scheme IPASigner \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            build
