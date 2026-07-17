@@ -1,4 +1,4 @@
-name: Auto Fix Repo + Xcode Build
+name: Auto Fix + Commit + Xcode Build
 
 on:
   push:
@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ---------------------------------------------------------
       # AUTO FIXER AGENT
@@ -20,14 +22,10 @@ jobs:
         run: |
           echo "🔧 Running auto-fixer..."
 
-          # Detect root folder containing Swift files
-          ROOT=$(find . -maxdepth 2 -type f -name "*.swift" -print0 | xargs -0 dirname | head -n 1)
-          echo "📁 Detected Swift root: $ROOT"
-
           # Remove conflicting CLI main.swift files
-          find "$ROOT" -maxdepth 2 -type f -name "main.swift" -delete
+          find . -type f -name "main.swift" -delete
 
-          # Create Core folder
+          # Ensure Core folder exists
           mkdir -p Core
 
           # Add Swift core files
@@ -70,7 +68,7 @@ public final class FileHandler {
 }
 EOF
 
-          # Patch CMakeLists based on actual repo root
+          # Patch CMakeLists
           cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.21)
 project(IPASignCore LANGUAGES Swift)
@@ -130,6 +128,19 @@ EOF
 </dict>
 </plist>
 EOF
+
+      # ---------------------------------------------------------
+      # AUTO COMMIT FIXES
+      # ---------------------------------------------------------
+      - name: Commit Fixes
+        run: |
+          echo "📦 Committing fixes..."
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+          git commit -m "Auto-fix: Xcode structure + Swift core + CMakeLists"
+          git push
 
       # ---------------------------------------------------------
       # BUILD SWIFT CORE
