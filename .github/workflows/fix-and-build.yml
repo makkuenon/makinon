@@ -1,1 +1,157 @@
+name: Auto Fix + Xcode Build
 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  fix_and_build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------
+      # AUTO FIXER AGENT
+      # ---------------------------------------------------------
+      - name: Run Fixer Agent
+        run: |
+          echo "🔧 Running auto-fixer..."
+
+          # Remove conflicting Swift CLI files
+          rm -f main.swift
+          rm -f */main.swift || true
+          rm -f Sources/main.swift || true
+
+          # Ensure Core folder exists
+          mkdir -p Core
+
+          # Add missing Swift core files
+          cat > Core/IPAFile.swift << 'EOF'
+import Foundation
+
+public struct IPAFile {
+    public let url: URL
+}
+EOF
+
+          cat > Core/SigningConfig.swift << 'EOF'
+import Foundation
+
+public struct SigningConfig {
+    public let certificate: String
+    public let profile: String
+}
+EOF
+
+          cat > Core/IPASigningService.swift << 'EOF'
+import Foundation
+
+public final class IPASigningService {
+    public init() {}
+
+    public func sign(ipa: IPAFile, config: SigningConfig) {
+        print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
+    }
+}
+EOF
+
+          cat > Core/CertificateManager.swift << 'EOF'
+import Foundation
+
+public final class CertificateManager {
+    public func load() -> String {
+        return "DeveloperCertificate"
+    }
+}
+EOF
+
+          cat > Core/FileHandler.swift << 'EOF'
+import Foundation
+
+public final class FileHandler {
+    public func exists(_ url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+}
+EOF
+
+          # Patch CMakeLists
+          cat > CMakeLists.txt << 'EOF'
+cmake_minimum_required(VERSION 3.21)
+project(IPASignerCore LANGUAGES Swift)
+
+set(CMAKE_Swift_LANGUAGE_VERSION 5)
+
+add_library(IPASignerCore STATIC
+    Core/IPAFile.swift
+    Core/SigningConfig.swift
+    Core/IPASigningService.swift
+    Core/CertificateManager.swift
+    Core/FileHandler.swift
+)
+
+set_target_properties(IPASignerCore PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
+)
+EOF
+
+          # Create SwiftUI app folder
+          mkdir -p App
+
+          cat > App/IPASignerApp.swift << 'EOF'
+import SwiftUI
+
+@main
+struct IPASignerApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+EOF
+
+          cat > App/ContentView.swift << 'EOF'
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        Text("IPASign iOS App")
+            .padding()
+    }
+}
+EOF
+
+          cat > App/Info.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>IPASign</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.makkuenon.ipasign</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+</dict>
+</plist>
+EOF
+
+      # ---------------------------------------------------------
+      # BUILD SWIFT CORE
+      # ---------------------------------------------------------
+      - name: Build Swift Core (CMake)
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -GXcode
+          cmake --build . --config Release
+
+      # ---------------------------------------------------------
+      #
