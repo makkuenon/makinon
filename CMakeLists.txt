@@ -1,22 +1,20 @@
 cmake_minimum_required(VERSION 3.21)
 project(IPASigner LANGUAGES Swift)
 
-# Set Swift language version
 set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
-# Set iOS deployment target
 set(CMAKE_SYSTEM_NAME iOS)
 set(CMAKE_OSX_SYSROOT iphoneos)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "13.0")
 
-# Add Swift module path
+# 🔥 Critical fix: GitHub runners do NOT support arm64e
+set(CMAKE_OSX_ARCHITECTURES "arm64")
+
 list(APPEND CMAKE_MODULE_PATH "/usr/local/share/cmake/Modules")
 
-# Enable Swift language support (native CMake support)
 enable_language(Swift)
 
-# Define source files
 set(SOURCES
     Sources/IPASigner/IPASignerApp.swift
     Sources/IPASigner/ContentView.swift
@@ -29,10 +27,8 @@ set(SOURCES
     Sources/IPASigner/Utilities/FileHandler.swift
 )
 
-# Create the executable
 add_executable(IPASigner ${SOURCES})
 
-# Set bundle identifier and signing
 set_target_properties(IPASigner PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
@@ -40,20 +36,16 @@ set_target_properties(IPASigner PROPERTIES
     XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
 )
 
-# Link frameworks
-# Note: CommonCrypto is part of the Security framework, not a standalone framework
 target_link_libraries(IPASigner PUBLIC
     "-framework Foundation"
     "-framework SwiftUI"
     "-framework Security"
 )
 
-# SwiftUI configuration
 set_target_properties(IPASigner PROPERTIES
     XCODE_ATTRIBUTE_ENABLE_PREVIEWS YES
 )
 
-# Output settings
 set_target_properties(IPASigner PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
