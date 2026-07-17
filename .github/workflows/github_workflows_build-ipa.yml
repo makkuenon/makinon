@@ -46,23 +46,28 @@ jobs:
             -derivedDataPath build/DerivedData \
             -destination generic/platform=iOS \
             -archivePath build/IPASigner.xcarchive \
-            -allowProvisioningUpdates \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
             archive
 
-      - name: Export IPA
+      - name: Package archive (zip)
         run: |
-          xcodebuild \
-            -exportArchive \
-            -archivePath build/IPASigner.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath build/output \
-            -allowProvisioningUpdates
+          mkdir -p build/output
+          if [ -d "build/IPASigner.xcarchive" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "build/IPASigner.xcarchive" "build/output/IPASigner.xcarchive.zip"
+          else
+            echo "Archive not found, skipping zip"
+            exit 1
+          fi
 
-      - name: Upload IPA artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: makinon-ipa
-          path: build/output/*.ipa
+          name: makinon-build
+          path: |
+            build/output/*.ipa
+            build/output/*.xcarchive.zip
           retention-days: 30
 
       - name: Create Release
