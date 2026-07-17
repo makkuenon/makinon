@@ -24,20 +24,16 @@ set(SOURCES
     Sources/IPASigner/Utilities/FileHandler.swift
 )
 
-add_executable(IPASigner ${SOURCES})
+# 🔥 CRITICAL: Use the Swift iOS app target type
+add_swift_executable(IPASigner ${SOURCES})
 
 set_target_properties(IPASigner PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
 
-    # 🔥 REQUIRED: iOS app product type
     XCODE_ATTRIBUTE_PRODUCT_TYPE "com.apple.product-type.application"
-
-    # 🔥 REQUIRED: restrict platform to iOS only
     XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS "iphoneos"
     XCODE_ATTRIBUTE_PLATFORM_NAME "iphoneos"
-
-    # 🔥 REQUIRED: iPhone + iPad
     XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
 
     XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.makinon.ipasigner"
