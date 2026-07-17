@@ -1,4 +1,4 @@
-name: Auto Fix + Commit + Xcode Build
+name: Auto Fix + Commit + Xcode Build + IPA Export
 
 on:
   push:
@@ -20,15 +20,14 @@ jobs:
       # ---------------------------------------------------------
       - name: Run Auto Fixer Agent
         run: |
-          echo "🔧 Running auto-fixer..."
+          echo "🔧 Auto-fixer for makinon starting..."
 
-          # Remove conflicting CLI main.swift files
-          find . -type f -name "main.swift" -delete
+          # Remove conflicting CLI entrypoints
+          find . -maxdepth 3 -type f -name "main.swift" -delete
 
-          # Ensure Core folder exists
+          # Create Core folder at repo root
           mkdir -p Core
 
-          # Add Swift core files
           cat > Core/IPAFile.swift << 'EOF'
 import Foundation
 public struct IPAFile { public let url: URL }
@@ -68,14 +67,14 @@ public final class FileHandler {
 }
 EOF
 
-          # Patch CMakeLists
+          # Root-level CMakeLists
           cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.21)
-project(IPASignCore LANGUAGES Swift)
+project(MakinonCore LANGUAGES Swift)
 
 set(CMAKE_Swift_LANGUAGE_VERSION 5)
 
-add_library(IPASignCore STATIC
+add_library(MakinonCore STATIC
     Core/IPAFile.swift
     Core/SigningConfig.swift
     Core/IPASigningService.swift
@@ -83,7 +82,7 @@ add_library(IPASignCore STATIC
     Core/FileHandler.swift
 )
 
-set_target_properties(IPASignCore PROPERTIES
+set_target_properties(MakinonCore PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
 )
 EOF
@@ -93,19 +92,23 @@ EOF
 
           cat > App/IPASignerApp.swift << 'EOF'
 import SwiftUI
+
 @main
 struct IPASignerApp: App {
     var body: some Scene {
-        WindowGroup { ContentView() }
+        WindowGroup {
+            ContentView()
+        }
     }
 }
 EOF
 
           cat > App/ContentView.swift << 'EOF'
 import SwiftUI
+
 struct ContentView: View {
     var body: some View {
-        Text("IPASign iOS App")
+        Text("Makinon iOS Signer")
             .padding()
     }
 }
@@ -118,9 +121,9 @@ EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>IPASign</string>
+    <string>Makinon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.makkuenon.ipasign</string>
+    <string>com.makkuenon.makinon</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
@@ -134,13 +137,12 @@ EOF
       # ---------------------------------------------------------
       - name: Commit Fixes
         run: |
-          echo "📦 Committing fixes..."
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add .
-          git commit -m "Auto-fix: Xcode structure + Swift core + CMakeLists"
-          git push
+          git add Core App CMakeLists.txt
+          git commit -m "Auto-fix: Core/App structure + CMakeLists for Xcode + IPA export prep" || echo "No changes"
+          git push || echo "Nothing to push"
 
       # ---------------------------------------------------------
       # BUILD SWIFT CORE
@@ -171,5 +173,45 @@ EOF
             -scheme IPASigner \
             -sdk iphoneos \
             -configuration Release \
+            -archivePath build/IPASigner.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            archive
+
+      # ---------------------------------------------------------
+      # EXPORT IPA
+      # ---------------------------------------------------------
+      - name: Export IPA
+        run: |
+          mkdir -p build/output
+
+          # Minimal exportOptions.plist
+          cat > exportOptions.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>development</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/IPASigner.xcarchive \
+            -exportPath build/output \
+            -exportOptionsPlist exportOptions.plist
+
+      # ---------------------------------------------------------
+      # UPLOAD IPA ARTIFACT
+      # ---------------------------------------------------------
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: makinon-ipa
+          path: build/output/*.ipa
