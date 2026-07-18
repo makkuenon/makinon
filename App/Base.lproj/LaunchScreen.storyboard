@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE storyboard PUBLIC "-//Apple//DTD STORYBOARD 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<storyboard version="1.0" toolsVersion="20000" targetRuntime="iOS.CocoaTouch" initialViewController="LaunchVC">
+    <scenes>
+        <scene sceneID="Scene1">
+            <objects>
+                <viewController id="LaunchVC" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="LaunchView">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="FirstResponder" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+    </scenes>
+</storyboard>
