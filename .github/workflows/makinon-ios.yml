@@ -1,0 +1,76 @@
+name: Build, Test, and Export Makinon iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-test-ipa:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest iPhone simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available | grep "iPhone" | head -n 1
+          UDID=$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | awk -F '[()]' '{print $2}')
+          echo "udid=$UDID" >> $GITHUB_OUTPUT
+
+      - name: Build and test Makinon (any available iPhone simulator)
+        run: |
+          xcodebuild \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -configuration Debug \
+            test
+
+      - name: Archive Makinon
+        run: |
+          xcodebuild \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/Makinon.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            OTHER_CODE_SIGN_FLAGS="--entitlements App/Makinon.entitlements" \
+            archive
+
+      - name: Export IPA
+        run: |
+          mkdir -p build/output
+
+          cat > exportOptions.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>development</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+</dict>
+</plist>
+EOF
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/Makinon.xcarchive \
+            -exportPath build/output \
+            -exportOptionsPlist exportOptions.plist
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: makinon-ipa
+          path: build/output/*.ipa
