@@ -1,0 +1,57 @@
+name: Build Makinon iOS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | awk -F '[()]' '{print $2}')
+          echo "udid=$UDID" >> $GITHUB_OUTPUT
+
+      - name: Build and test
+        run: |
+          xcodebuild \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            test
+
+      - name: Archive
+        run: |
+          xcodebuild \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
+            -sdk iphoneos \
+            -archivePath build/Makinon.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Export IPA
+        run: |
+          mkdir -p build/output
+          xcodebuild -exportArchive \
+            -archivePath build/Makinon.xcarchive \
+            -exportPath build/output \
+            -exportOptionsPlist exportOptions.plist
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: makinon-ipa
+          path: build/output/*.ipa
