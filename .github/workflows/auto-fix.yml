@@ -83,12 +83,36 @@ jobs:
             exit 1
           fi
 
-      - name: Upload XCArchive
-        uses: actions/upload-artifact@v4
-        with:
-          name: makinon-xcarchive
-          path: build/Makinon.xcarchive
-          if-no-files-found: warn
+      - name: Package unsigned IPA (no signing)
+        shell: bash
+        run: |
+          echo "📦 Packaging unsigned IPA from archive (no signing)..."
+          set -e
+          # Locate the .app inside the xcarchive
+          APP_PATH=$(find build/Makinon.xcarchive -name "*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ .app not found inside archive" && exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+
+          # Prepare payload and copy the .app
+          rm -rf build/output || true
+          mkdir -p build/output/Payload
+          cp -R "$APP_PATH" build/output/Payload/
+
+          # Remove any code signature artifacts to ensure it's unsigned
+          rm -rf build/output/Payload/*.app/_CodeSignature || true
+          rm -rf build/output/Payload/*.app/CodeResources || true
+
+          # Create IPA by zipping the Payload folder
+          pushd build/output >/dev/null
+          zip -r ../makinon-unsigned.ipa Payload >/dev/null || true
+          popd >/dev/null
+
+          # Move IPA into output dir (zip produced one level up)
+          mv build/makinon-unsigned.ipa build/output/ || true
+          echo "📁 IPA files:"
+          ls -la build/output || true
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
