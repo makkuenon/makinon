@@ -1,23 +1,21 @@
-// swift-tools-version:5.9
+// swift-tools-version: 5.10
 import PackageDescription
 
 let package = Package(
-    name: "IPASigner",
+    name: "Makinon",
     platforms: [
-        .macOS(.v13),
-        .iOS(.v13)
+        .iOS(.v13),
+        .macOS(.v10_15)
     ],
-    dependencies: [
-        // Add dependencies here if needed
+    products: [
+        .library(name: "MakinonCore", targets: ["MakinonCore"])
     ],
+    dependencies: [],
     targets: [
-        .executableTarget(
-            name: "IPASigner",
+        .target(
+            name: "MakinonCore",
             dependencies: [],
-            path: "Sources",
-            swiftSettings: [
-                .unsafeFlags(["-parse-as-library"])
-            ]
+            path: "Core"
         )
     ]
 )
