@@ -56,13 +56,10 @@ jobs:
             -configuration Release \
             -archivePath build/Makinon.xcarchive \
             -derivedDataPath build/DerivedData \
-            -xcconfig <(cat <<'XCCFG'
-          IPHONEOS_DEPLOYMENT_TARGET = 15.0
-          SDKROOT = iphoneos
-          CODE_SIGNING_ALLOWED = NO
-          CODE_SIGN_IDENTITY = 
-XCCFG
-            ) \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 \
+            SDKROOT=iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             archive 2>&1 | tee build.log
 
