@@ -116,28 +116,37 @@ jobs:
           git commit -m "Auto-fix: Core/App structure for Xcode + IPA export prep" || echo "No changes"
           git push || echo "Nothing to push"
 
-      - name: Generate Xcode Project
+      - name: Generate Xcode Project with XcodeGen
         shell: bash
         run: |
-          cd App
-          swift package init --type executable
-          swift package generate-xcodeproj
+          echo "📦 Installing XcodeGen..."
+          brew install xcodegen
+          
+          echo "🔨 Generating Xcode project from project.yml..."
+          xcodegen generate
+          
+          echo "✅ Xcode project generated successfully"
+          find . -name "*.xcodeproj" -type d
 
       - name: Build iOS App
         shell: bash
         run: |
+          echo "🔨 Building iOS app..."
           xcodebuild \
-            -project App/IPASigner.xcodeproj \
-            -scheme IPASigner \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
             -sdk iphoneos \
             -configuration Release \
-            -archivePath build/IPASigner.xcarchive \
+            -archivePath build/Makinon.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
             archive
 
       - name: Export IPA
         shell: bash
         run: |
+          echo "📦 Exporting IPA..."
           mkdir -p build/output
 
           cat > exportOptions.plist << 'EOF'
@@ -158,7 +167,7 @@ jobs:
 
           xcodebuild \
             -exportArchive \
-            -archivePath build/IPASigner.xcarchive \
+            -archivePath build/Makinon.xcarchive \
             -exportPath build/output \
             -exportOptionsPlist exportOptions.plist
 
