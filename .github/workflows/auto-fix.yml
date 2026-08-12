@@ -2,7 +2,7 @@ name: Auto Fix + Commit + Xcode Build + IPA Export
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -16,6 +16,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Auto Fixer Agent
+        shell: bash
         run: |
           echo "🔧 Auto-fixer for makinon starting..."
 
@@ -24,89 +25,90 @@ jobs:
           mkdir -p Core
 
           cat > Core/IPAFile.swift << 'EOF'
-import Foundation
-public struct IPAFile { public let url: URL }
-EOF
+          import Foundation
+          public struct IPAFile { public let url: URL }
+          EOF
 
           cat > Core/SigningConfig.swift << 'EOF'
-import Foundation
-public struct SigningConfig {
-    public let certificate: String
-    public let profile: String
-}
-EOF
+          import Foundation
+          public struct SigningConfig {
+              public let certificate: String
+              public let profile: String
+          }
+          EOF
 
           cat > Core/IPASigningService.swift << 'EOF'
-import Foundation
-public final class IPASigningService {
-    public init() {}
-    public func sign(ipa: IPAFile, config: SigningConfig) {
-        print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
-    }
-}
-EOF
+          import Foundation
+          public final class IPASigningService {
+              public init() {}
+              public func sign(ipa: IPAFile, config: SigningConfig) {
+                  print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
+              }
+          }
+          EOF
 
           cat > Core/CertificateManager.swift << 'EOF'
-import Foundation
-public final class CertificateManager {
-    public func load() -> String { "DeveloperCertificate" }
-}
-EOF
+          import Foundation
+          public final class CertificateManager {
+              public func load() -> String { "DeveloperCertificate" }
+          }
+          EOF
 
           cat > Core/FileHandler.swift << 'EOF'
-import Foundation
-public final class FileHandler {
-    public func exists(_ url: URL) -> Bool {
-        FileManager.default.fileExists(atPath: url.path)
-    }
-}
-EOF
+          import Foundation
+          public final class FileHandler {
+              public func exists(_ url: URL) -> Bool {
+                  FileManager.default.fileExists(atPath: url.path)
+              }
+          }
+          EOF
 
           mkdir -p App
 
           cat > App/IPASignerApp.swift << 'EOF'
-import SwiftUI
+          import SwiftUI
 
-@main
-struct IPASignerApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
-EOF
+          @main
+          struct IPASignerApp: App {
+              var body: some Scene {
+                  WindowGroup {
+                      ContentView()
+                  }
+              }
+          }
+          EOF
 
           cat > App/ContentView.swift << 'EOF'
-import SwiftUI
+          import SwiftUI
 
-struct ContentView: View {
-    var body: some View {
-        Text("Makinon iOS Signer")
-            .padding()
-    }
-}
-EOF
+          struct ContentView: View {
+              var body: some View {
+                  Text("Makinon iOS Signer")
+                      .padding()
+              }
+          }
+          EOF
 
           cat > App/Info.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
- "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>Makinon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.makkuenon.makinon</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-</dict>
-</plist>
-EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>Makinon</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.makkuenon.makinon</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+          </dict>
+          </plist>
+          EOF
 
       - name: Commit Fixes
+        shell: bash
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -115,12 +117,14 @@ EOF
           git push || echo "Nothing to push"
 
       - name: Generate Xcode Project
+        shell: bash
         run: |
           cd App
           swift package init --type executable
           swift package generate-xcodeproj
 
       - name: Build iOS App
+        shell: bash
         run: |
           xcodebuild \
             -project App/IPASigner.xcodeproj \
@@ -132,24 +136,25 @@ EOF
             archive
 
       - name: Export IPA
+        shell: bash
         run: |
           mkdir -p build/output
 
           cat > exportOptions.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
- "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>method</key>
-    <string>development</string>
-    <key>signingStyle</key>
-    <string>manual</string>
-    <key>stripSwiftSymbols</key>
-    <true/>
-</dict>
-</plist>
-EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
 
           xcodebuild \
             -exportArchive \
