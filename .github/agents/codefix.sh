@@ -3,22 +3,61 @@ set -e
 
 echo "🔧 Xcode Fixer Agent: starting..."
 
-# 1. Fix CMakeLists to be a Swift library instead of an app
-if [ -f "makinon/CMakeLists.txt" ]; then
-  echo "🛠 Patching makinon/CMakeLists.txt..."
-  cat > makinon/CMakeLists.txt << 'EOF'
-cmake_minimum_required(VERSION 3.21)
-project(IPASignerCore LANGUAGES Swift)
+# 1. Create Core folder with Swift library files if missing
+if [ ! -d "Core" ]; then
+  echo "🛠 Creating Core/ Swift library..."
+  mkdir -p Core
 
-set(CMAKE_Swift_LANGUAGE_VERSION 5)
+  cat > Core/IPAFile.swift << 'EOF'
+import Foundation
 
-add_library(IPASignerCore STATIC
-    makinon/main.swift
-)
+public struct IPAFile {
+    public let url: URL
+    
+    public init(url: URL) {
+        self.url = url
+    }
+}
+EOF
 
-set_target_properties(IPASignerCore PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
-)
+  cat > Core/SigningConfig.swift << 'EOF'
+import Foundation
+
+public struct SigningConfig {
+    public let certificate: String
+    
+    public init(certificate: String) {
+        self.certificate = certificate
+    }
+}
+EOF
+
+  cat > Core/IPASigningService.swift << 'EOF'
+import Foundation
+
+public final class IPASigningService {
+    public init() {}
+    
+    public func sign(ipa: IPAFile, config: SigningConfig) {
+        print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
+    }
+}
+EOF
+
+  cat > Core/CertificateManager.swift << 'EOF'
+import Foundation
+public final class CertificateManager {
+    public func load() -> String { "DeveloperCertificate" }
+}
+EOF
+
+  cat > Core/FileHandler.swift << 'EOF'
+import Foundation
+public final class FileHandler {
+    public func exists(_ url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+}
 EOF
 fi
 
@@ -58,7 +97,7 @@ EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>IPASigner</string>
+    <string>Makinon</string>
     <key>CFBundleIdentifier</key>
     <string>com.makkuenon.makinon</string>
     <key>CFBundleShortVersionString</key>
