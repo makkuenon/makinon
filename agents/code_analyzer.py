@@ -7,7 +7,6 @@ Supports analysis of multiple languages:
 - Python
 - JavaScript
 - HTML
-- CMake
 """
 
 import os
@@ -123,54 +122,75 @@ class CodeAnalyzer:
 
         return issues
 
-    def scan_repository(self) -> List[Dict]:
-        """Scan entire repository for issues."""
-        all_issues = []
+agents/xcode_fixer.sh
 
-        for root, dirs, files in os.walk(self.repo_path):
-            # Skip hidden and build directories
-            dirs[:] = [d for d in dirs if not d.startswith('.')]
+sh
 
-            for file in files:
-                file_path = os.path.join(root, file)
+#!/usr/bin/env bash
+set -e
 
-                if file.endswith('.swift'):
-                    all_issues.extend(self.analyze_swift(file_path))
-                elif file.endswith('.py'):
-                    all_issues.extend(self.analyze_python(file_path))
-                elif file.endswith('.js'):
-                    all_issues.extend(self.analyze_javascript(file_path))
+echo "🔧 Xcode Fixer Agent: starting..."
 
-        return all_issues
+# ---------------------------------------------------------
+# 1. Remove Swift CLI files that break iOS builds
+# ---------------------------------------------------------
+echo "🗑 Removing conflicting Swift CLI files..."
+rm -f main.swift
+rm -f ipasign/main.swift
+rm -f Sources/main.swift
+rm -f */main.swift || true
 
-    def generate_report(self) -> str:
-        """Generate a report of found issues."""
-        issues = self.scan_repository()
+# ---------------------------------------------------------
+# 2. Create SwiftUI iOS app if missing
+# ---------------------------------------------------------
+if [ ! -d "App" ]; then
+  echo "📱 Creating SwiftUI App folder..."
+  mkdir -p App
 
-        if not issues:
-            return "No issues found!"
+  cat > App/IPASignerApp.swift << 'EOF'
+import SwiftUI
 
-        report = "# Code Analysis Report\n\n"
-        report += f"## Summary\n- Total issues found: {len(issues)}\n\n"
+@main
+struct IPASignerApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+EOF
 
-        # Group by severity
-        by_severity = {}
-        for issue in issues:
-            severity = issue['severity']
-            if severity not in by_severity:
-                by_severity[severity] = []
-            by_severity[severity].append(issue)
+  cat > App/ContentView.swift << 'EOF'
+import SwiftUI
 
-        for severity in ['error', 'warning', 'info']:
-            if severity in by_severity:
-                report += f"### {severity.upper()} ({len(by_severity[severity])})\n"
-                for issue in by_severity[severity]:
-                    report += f"- **{issue['file']}**: {issue['message']}\n"
-                report += "\n"
+struct ContentView: View {
+    var body: some View {
+        VStack {
+            Text("IPASign iOS App")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+}
+EOF
 
-        return report
+  cat > App/Info.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>IPASign</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.makkuenon.ipasign</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+</dict>
+</plist>
+EOF
+fi
 
-
-if __name__ == "__main__":
-    analyzer = CodeAnalyzer()
-    print(analyzer.generate_report())
+echo "✅ Xcode Fixer Agent: finished."
