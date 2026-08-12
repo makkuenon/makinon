@@ -62,25 +62,6 @@ public final class FileHandler {
 }
 EOF
 
-          cat > CMakeLists.txt << 'EOF'
-cmake_minimum_required(VERSION 3.21)
-project(MakinonCore LANGUAGES Swift)
-
-set(CMAKE_Swift_LANGUAGE_VERSION 5)
-
-add_library(MakinonCore STATIC
-    Core/IPAFile.swift
-    Core/SigningConfig.swift
-    Core/IPASigningService.swift
-    Core/CertificateManager.swift
-    Core/FileHandler.swift
-)
-
-set_target_properties(MakinonCore PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
-)
-EOF
-
           mkdir -p App
 
           cat > App/IPASignerApp.swift << 'EOF'
@@ -129,16 +110,9 @@ EOF
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add Core App CMakeLists.txt
-          git commit -m "Auto-fix: Core/App structure + CMakeLists for Xcode + IPA export prep" || echo "No changes"
+          git add Core App
+          git commit -m "Auto-fix: Core/App structure for Xcode + IPA export prep" || echo "No changes"
           git push || echo "Nothing to push"
-
-      - name: Build Swift Core (CMake)
-        run: |
-          mkdir -p build
-          cd build
-          cmake .. -GXcode
-          cmake --build . --config Release
 
       - name: Generate Xcode Project
         run: |
