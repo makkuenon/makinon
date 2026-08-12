@@ -15,118 +15,35 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Auto Fixer Agent
+      - name: Verify Project Structure
         shell: bash
         run: |
-          echo "🔧 Auto-fixer for makinon starting..."
+          echo "📁 Checking project structure..."
+          echo "✓ project.yml exists:" && [ -f project.yml ] && echo "YES" || echo "NO"
+          echo "✓ App directory:" && ls -la App/ | head -20
+          echo "✓ Checking for storyboards..."
+          find App -name "*.storyboard" -type f
 
-          find . -maxdepth 3 -type f -name "main.swift" -delete
-
-          mkdir -p Core
-
-          cat > Core/IPAFile.swift << 'EOF'
-          import Foundation
-          public struct IPAFile { public let url: URL }
-          EOF
-
-          cat > Core/SigningConfig.swift << 'EOF'
-          import Foundation
-          public struct SigningConfig {
-              public let certificate: String
-              public let profile: String
-          }
-          EOF
-
-          cat > Core/IPASigningService.swift << 'EOF'
-          import Foundation
-          public final class IPASigningService {
-              public init() {}
-              public func sign(ipa: IPAFile, config: SigningConfig) {
-                  print("Signing \(ipa.url.lastPathComponent) with \(config.certificate)")
-              }
-          }
-          EOF
-
-          cat > Core/CertificateManager.swift << 'EOF'
-          import Foundation
-          public final class CertificateManager {
-              public func load() -> String { "DeveloperCertificate" }
-          }
-          EOF
-
-          cat > Core/FileHandler.swift << 'EOF'
-          import Foundation
-          public final class FileHandler {
-              public func exists(_ url: URL) -> Bool {
-                  FileManager.default.fileExists(atPath: url.path)
-              }
-          }
-          EOF
-
-          mkdir -p App
-
-          cat > App/IPASignerApp.swift << 'EOF'
-          import SwiftUI
-
-          @main
-          struct IPASignerApp: App {
-              var body: some Scene {
-                  WindowGroup {
-                      ContentView()
-                  }
-              }
-          }
-          EOF
-
-          cat > App/ContentView.swift << 'EOF'
-          import SwiftUI
-
-          struct ContentView: View {
-              var body: some View {
-                  Text("Makinon iOS Signer")
-                      .padding()
-              }
-          }
-          EOF
-
-          cat > App/Info.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleName</key>
-              <string>Makinon</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.makkuenon.makinon</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Commit Fixes
-        shell: bash
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add Core App
-          git commit -m "Auto-fix: Core/App structure for Xcode + IPA export prep" || echo "No changes"
-          git push || echo "Nothing to push"
-
-      - name: Generate Xcode Project with XcodeGen
+      - name: Install XcodeGen
         shell: bash
         run: |
           echo "📦 Installing XcodeGen..."
           brew install xcodegen
-          
+
+      - name: Generate Xcode Project
+        shell: bash
+        run: |
           echo "🔨 Generating Xcode project from project.yml..."
           xcodegen generate
           
-          echo "✅ Xcode project generated successfully"
-          find . -name "*.xcodeproj" -type d
+          echo "✅ Xcode project generated"
+          ls -la *.xcodeproj || echo "⚠️  No .xcodeproj found"
+
+      - name: List Generated Files
+        shell: bash
+        run: |
+          echo "📋 Generated project structure:"
+          find Makinon.xcodeproj -type f | head -20
 
       - name: Build iOS App
         shell: bash
@@ -141,7 +58,19 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            archive
+            archive 2>&1 | tee build.log
+
+      - name: Check Build Result
+        shell: bash
+        run: |
+          if [ -d "build/Makinon.xcarchive" ]; then
+            echo "✅ Archive created successfully"
+            ls -la build/Makinon.xcarchive
+          else
+            echo "❌ Archive failed"
+            tail -100 build.log
+            exit 1
+          fi
 
       - name: Export IPA
         shell: bash
@@ -176,3 +105,4 @@ jobs:
         with:
           name: makinon-ipa
           path: build/output/*.ipa
+          if-no-files-found: warn
