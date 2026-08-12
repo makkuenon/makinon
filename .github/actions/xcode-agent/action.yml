@@ -1,27 +1,19 @@
-name: "Xcode Logic Replacer Agent"
-description: "Replaces Swift build logic with Xcode build logic automatically."
+name: "Xcode Agent"
+description: "Manages Swift/Xcode build logic and project structure."
 
 runs:
   using: "composite"
   steps:
-    - name: Scan for Swift build logic
+    - name: Scan for Swift build structure
       shell: bash
       run: |
-        echo "🔍 Scanning repository for Swift-based build logic..."
-        grep -R "swift build" -n || true
-        grep -R "swiftc" -n || true
-        grep -R "add_executable" -n || true
-        grep -R "MACOSX_BUNDLE" -n || true
-
-    - name: Disable CMake iOS app targets
-      shell: bash
-      run: |
-        echo "🛑 Removing unsupported CMake iOS app logic..."
-        sed -i '' 's/add_executable/# add_executable (disabled by Xcode Agent)/g' CMakeLists.txt
-        sed -i '' 's/MACOSX_BUNDLE TRUE/# MACOSX_BUNDLE TRUE (disabled)/g' CMakeLists.txt
+        echo "🔍 Scanning repository for Swift project structure..."
+        find . -name "*.swift" -type f | head -20 || true
+        find . -name "*.xcodeproj" -type d || true
+        find . -name "Package.swift" -type f || true
 
     - name: Inject Xcode build logic
       shell: bash
       run: |
-        echo "⚙️ Injecting Xcode build logic..."
-        echo "XCODE_AGENT_INJECTED=1" >> $GITHUB_ENV
+        echo "⚙️ Xcode project management enabled..."
+        echo "XCODE_AGENT_ACTIVE=1" >> $GITHUB_ENV
