@@ -24,7 +24,6 @@ jobs:
           echo "✓ Checking for storyboards..."
           find App -name "*.storyboard" -type f
 
-      # Import certificates & provisioning profiles (manual signing)
       - name: Import certificates & provisioning profiles
         uses: apple/actions/import-codesign@v1
         with:
@@ -43,7 +42,6 @@ jobs:
         run: |
           echo "🔨 Generating Xcode project from project.yml..."
           xcodegen generate
-
           echo "✅ Xcode project generated"
           ls -la *.xcodeproj || echo "⚠️  No .xcodeproj found"
 
@@ -86,38 +84,35 @@ jobs:
           echo "📋 Installed provisioning profiles (for debug)"
           ls -la ~/Library/MobileDevice/Provisioning\ Profiles || true
 
-      - name: Export IPA
+      - name: Export IPA (generate exportOptions.plist from env)
         env:
+          EXPORT_METHOD: development
+          SIGNING_STYLE: manual
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
           PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
         shell: bash
         run: |
-          echo "📦 Exporting IPA..."
+          set -euo pipefail
+          echo "📦 Generating exportOptions.plist from environment (no XML in workflow)..."
+          python3 - <<'PY'
+import os, plistlib
+opts = {
+    "method": os.environ.get("EXPORT_METHOD", "development"),
+    "teamID": os.environ.get("TEAM_ID"),
+    "signingStyle": os.environ.get("SIGNING_STYLE", "manual"),
+    "stripSwiftSymbols": True,
+    "provisioningProfiles": {
+        os.environ.get("BUNDLE_ID"): os.environ.get("PROFILE_NAME")
+    }
+}
+# Write XML plist (xcodebuild accepts XML)
+with open("exportOptions.plist", "wb") as f:
+    plistlib.dump(opts, f, fmt=plistlib.FMT_XML)
+print("Wrote exportOptions.plist")
+PY
+          echo "Exporting archive to IPA..."
           mkdir -p build/output
-
-          cat > exportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>development</string>
-              <key>teamID</key>
-              <string>${TEAM_ID}</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>provisioningProfiles</key>
-              <dict>
-                <key>${BUNDLE_ID}</key>
-                <string>${PROFILE_NAME}</string>
-              </dict>
-          </dict>
-          </plist>
-          EOF
-
           xcodebuild \
             -exportArchive \
             -archivePath build/Makinon.xcarchive \
