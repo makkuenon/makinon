@@ -17,24 +17,12 @@ jobs:
         with:
           submodules: recursive
 
-      # ⚡ CMake cache
-      - name: Cache CMake build
-        uses: actions/cache@v4
-        with:
-          path: |
-            build/CMakeFiles
-            build/*.cmake
-            build/IPASigner.xcodeproj
-          key: cmake-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'Sources/**') }}
-          restore-keys: |
-            cmake-${{ runner.os }}-
-
       # ⚡ DerivedData cache
       - name: Cache Xcode DerivedData
         uses: actions/cache@v4
         with:
           path: build/DerivedData
-          key: dd-${{ runner.os }}-${{ hashFiles('Sources/**') }}
+          key: dd-${{ runner.os }}-${{ hashFiles('Sources/**', 'Core/**', 'Package.swift') }}
           restore-keys: |
             dd-${{ runner.os }}-
 
@@ -43,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/DerivedData/ModuleCache.noindex
-          key: swiftmod-${{ runner.os }}-${{ hashFiles('Sources/**') }}
+          key: swiftmod-${{ runner.os }}-${{ hashFiles('Sources/**', 'Core/**', 'Package.swift') }}
           restore-keys: |
             swiftmod-${{ runner.os }}-
 
@@ -59,24 +47,10 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Install dependencies
-        run: brew install cmake ninja
-
-      - name: Generate Xcode project with CMake
+      - name: Build archive with Xcode
         run: |
           mkdir -p build
-          cd build
-          cmake .. \
-            -GXcode \
-            -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT=iphoneos \
-            -DCMAKE_OSX_ARCHITECTURES=arm64
-          cd ..
-
-      - name: Build archive
-        run: |
           xcodebuild \
-            -project build/IPASigner.xcodeproj \
             -scheme IPASigner \
             -configuration Release \
             -derivedDataPath build/DerivedData \
@@ -110,8 +84,4 @@ jobs:
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: build/output/*.ipa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "Release creation step"
