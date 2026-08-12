@@ -25,11 +25,11 @@ jobs:
           find App -name "*.storyboard" -type f || true
 
       - name: Import certificates & provisioning profiles
-        uses: apple/actions/import-codesign@v1
+        uses: apple-actions/import-codesign-certs@v2
         with:
-          p12-base64: ${{ secrets.APPLE_P12_BASE64 }}
+          p12-file-base64: ${{ secrets.APPLE_P12_BASE64 }}
           p12-password: ${{ secrets.APPLE_P12_PASSWORD }}
-          provisioning-profiles-base64: ${{ secrets.MOBILEPROVISION_BASE64 }}
+          provisioning-profile-base64: ${{ secrets.MOBILEPROVISION_BASE64 }}
 
       - name: Install XcodeGen
         shell: bash
