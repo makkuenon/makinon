@@ -50,6 +50,64 @@ jobs:
           gem install fastlane -NV || true
           fastlane --version || true
 
+      - name: Build .app for packaging IPA (code signing disabled)
+        shell: bash
+        run: |
+          echo "🔨 Building .app for packaging (code signing disabled)..."
+          set -o pipefail
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
+          export DEVELOPMENT_TEAM=""
+          xcodebuild \
+            -project Makinon.xcodeproj \
+            -scheme Makinon \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 \
+            SDKROOT=iphoneos \
+            clean build 2>&1 | tee build-app.log || true
+
+      - name: Package unsigned IPA (no signing) from DerivedData
+        shell: bash
+        run: |
+          echo "📦 Packaging unsigned IPA from built .app (no signing)..."
+          set -e
+          # Locate the .app inside the DerivedData build products
+          APP_PATH=$(find build/DerivedData -path "*/Release-iphoneos/*.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ .app not found in DerivedData, failing" && tail -200 build-app.log || true
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+
+          # Prepare payload and copy the .app
+          rm -rf build/output || true
+          mkdir -p build/output/Payload
+          cp -R "$APP_PATH" build/output/Payload/
+
+          # Remove any code signature artifacts to ensure it's unsigned
+          rm -rf build/output/Payload/*.app/_CodeSignature || true
+          rm -rf build/output/Payload/*.app/CodeResources || true
+
+          # Create IPA by zipping the Payload folder
+          pushd build/output >/dev/null
+          zip -r ../makinon-unsigned.ipa Payload >/dev/null || true
+          popd >/dev/null
+
+          # Move IPA into output dir (zip produced one level up)
+          mv build/makinon-unsigned.ipa build/output/ || true
+          echo "📁 IPA files:"
+          ls -la build/output || true
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: makinon-ipa
+          path: build/output/*.ipa
+          if-no-files-found: warn
+
       - name: Build archive with xcodebuild
         shell: bash
         run: |
@@ -83,40 +141,3 @@ jobs:
             exit 1
           fi
 
-      - name: Package unsigned IPA (no signing)
-        shell: bash
-        run: |
-          echo "📦 Packaging unsigned IPA from archive (no signing)..."
-          set -e
-          # Locate the .app inside the xcarchive
-          APP_PATH=$(find build/Makinon.xcarchive -name "*.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ .app not found inside archive" && exit 1
-          fi
-          echo "Found app at: $APP_PATH"
-
-          # Prepare payload and copy the .app
-          rm -rf build/output || true
-          mkdir -p build/output/Payload
-          cp -R "$APP_PATH" build/output/Payload/
-
-          # Remove any code signature artifacts to ensure it's unsigned
-          rm -rf build/output/Payload/*.app/_CodeSignature || true
-          rm -rf build/output/Payload/*.app/CodeResources || true
-
-          # Create IPA by zipping the Payload folder
-          pushd build/output >/dev/null
-          zip -r ../makinon-unsigned.ipa Payload >/dev/null || true
-          popd >/dev/null
-
-          # Move IPA into output dir (zip produced one level up)
-          mv build/makinon-unsigned.ipa build/output/ || true
-          echo "📁 IPA files:"
-          ls -la build/output || true
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: makinon-ipa
-          path: build/output/*.ipa
-          if-no-files-found: warn
