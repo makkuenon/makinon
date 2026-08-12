@@ -2,15 +2,25 @@ name: Makinon
 options:
   minimumXcodeGenVersion: 2.30.0
 
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    SDKROOT: iphoneos
+
 targets:
   Makinon:
     type: application
     platform: iOS
     deploymentTarget: "15.0"
     sources:
-      - App
+      - path: App
+        excludes:
+          - "**/*.storyboard"
+          - "**/*.xib"
     resources:
       - path: App/Base.lproj
+        buildPhase: resources
+      - path: App/Assets.xcassets
         buildPhase: resources
     settings:
       base:
@@ -22,5 +32,6 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
         SDKROOT: iphoneos
         TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_BITCODE: "NO"
     scheme:
       testTargets: []
