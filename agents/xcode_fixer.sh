@@ -13,29 +13,7 @@ rm -f Sources/main.swift
 rm -f */main.swift || true
 
 # ---------------------------------------------------------
-# 2. Patch CMakeLists to build ONLY the Swift core library
-# ---------------------------------------------------------
-echo "🛠 Patching CMakeLists.txt..."
-cat > CMakeLists.txt << 'EOF'
-cmake_minimum_required(VERSION 3.21)
-project(IPASignCore LANGUAGES Swift)
-
-set(CMAKE_Swift_LANGUAGE_VERSION 5)
-
-add_library(IPASignCore STATIC
-    Core/Signer.swift
-    Core/CertificateManager.swift
-    Core/Entitlements.swift
-    Core/FileHandler.swift
-)
-
-set_target_properties(IPASignCore PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build"
-)
-EOF
-
-# ---------------------------------------------------------
-# 3. Create SwiftUI iOS app if missing
+# 2. Create SwiftUI iOS app if missing
 # ---------------------------------------------------------
 if [ ! -d "App" ]; then
   echo "📱 Creating SwiftUI App folder..."
