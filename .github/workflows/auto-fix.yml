@@ -24,33 +24,6 @@ jobs:
           echo "✓ Checking for storyboards..."
           find App -name "*.storyboard" -type f || true
 
-      - name: Load codesign files from repo
-        shell: bash
-        run: |
-          echo "📦 Loading codesign files from repo..."
-          if [ -f ken1key.p12 ]; then
-            echo "Found ken1key.p12"
-            P12_BASE64=$(openssl base64 -A -in ken1key.p12)
-            echo "P12_BASE64=$P12_BASE64" >> $GITHUB_ENV
-          else
-            echo "ken1key.p12 not found"
-          fi
-
-          if [ -f ken1key.mobileprovision ]; then
-            echo "Found ken1key.mobileprovision"
-            PROV_BASE64=$(openssl base64 -A -in ken1key.mobileprovision)
-            echo "MOBILEPROVISION_BASE64=$PROV_BASE64" >> $GITHUB_ENV
-          else
-            echo "ken1key.mobileprovision not found"
-          fi
-
-      - name: Import certificates & provisioning profiles
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ env.P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_P12_PASSWORD }}
-          provisioning-profile-base64: ${{ env.MOBILEPROVISION_BASE64 }}
-
       - name: Install XcodeGen
         shell: bash
         run: |
@@ -80,8 +53,13 @@ jobs:
       - name: Build archive with xcodebuild
         shell: bash
         run: |
-          echo "🔨 Building archive with xcodebuild..."
+          echo "🔨 Building archive with xcodebuild (code signing disabled)..."
           set -o pipefail
+          # Disable code signing to avoid requiring certificates/provisioning profiles on the runner
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
+          export DEVELOPMENT_TEAM=""
           xcodebuild \
             -project Makinon.xcodeproj \
             -scheme Makinon \
@@ -104,31 +82,6 @@ jobs:
             tail -200 build.log || true
             exit 1
           fi
-
-      - name: Export IPA with fastlane (no XML in workflow)
-        env:
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
-          PROVISIONING_PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
-        shell: bash
-        run: |
-          echo "📦 Exporting IPA with fastlane gym (uses installed codesign assets)..."
-          mkdir -p build/output
-
-          # Use fastlane gym to export the IPA from the project/scheme — gym will handle exportOptions internally
-          # fastlane gym options: --project, --scheme, --output_directory, --export_method
-          fastlane gym \
-            --project "Makinon.xcodeproj" \
-            --scheme "Makinon" \
-            --output_directory "build/output" \
-            --export_method "development" \
-            --clean || {
-              echo "fastlane gym failed — printing build.log";
-              tail -200 build.log || true;
-              exit 1;
-            }
-
-          echo "✅ fastlane gym finished. IPA (if produced) will be in build/output"
 
       - name: Upload XCArchive
         uses: actions/upload-artifact@v4
