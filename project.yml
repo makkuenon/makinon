@@ -26,7 +26,7 @@ targets:
       base:
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/Makinon.entitlements
-        PRODUCT_BUNDLE_IDENTIFIER: com.makkuenon.makinon
+        PRODUCT_BUNDLE_IDENTIFIER: com.kenen.ikiowk
         DEVELOPMENT_TEAM: KRNONEKEYS
         SWIFT_VERSION: 5.0
         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
