@@ -9,6 +9,9 @@ targets:
     deploymentTarget: "15.0"
     sources:
       - App
+    resources:
+      - path: App/Base.lproj
+        buildPhase: resources
     settings:
       base:
         INFOPLIST_FILE: App/Info.plist
@@ -16,5 +19,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.makkuenon.makinon
         DEVELOPMENT_TEAM: KRNONEKEYS
         SWIFT_VERSION: 5.0
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        SDKROOT: iphoneos
+        TARGETED_DEVICE_FAMILY: "1,2"
     scheme:
       testTargets: []
