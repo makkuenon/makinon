@@ -51,10 +51,10 @@ jobs:
         run: |
           mkdir -p build
           xcodebuild \
-            -scheme IPASigner \
+            -scheme Makinon \
             -configuration Release \
             -derivedDataPath build/DerivedData \
-            -archivePath build/IPASigner.xcarchive \
+            -archivePath build/Makinon.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -65,15 +65,15 @@ jobs:
           mkdir -p build/output
           xcodebuild \
             -exportArchive \
-            -archivePath build/IPASigner.xcarchive \
+            -archivePath build/Makinon.xcarchive \
             -exportPath build/output \
             -exportOptionsPlist exportOptions.plist
 
       - name: Zip XCArchive
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
-            "build/IPASigner.xcarchive" \
-            "build/output/IPASigner.xcarchive.zip"
+            "build/Makinon.xcarchive" \
+            "build/output/Makinon.xcarchive.zip"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
