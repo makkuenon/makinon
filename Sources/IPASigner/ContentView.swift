@@ -5,7 +5,8 @@ struct ContentView: View {
     @State private var showingFilePicker = false
     @State private var selectedIPAPath: String?
     @State private var isProcessing = false
-    
+    @State private var selection = 0
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -20,22 +21,34 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                
+
                 // Main Content
-                TabView {
+                TabView(selection: $selection) {
+                    SmoothHomeView()
+                        .tabItem {
+                            Label("Home", systemImage: "house.fill")
+                        }
+                        .tag(0)
+
                     SigningView()
                         .tabItem {
                             Label("Sign IPA", systemImage: "signature")
                         }
-                    
+                        .tag(1)
+
                     SettingsView()
                         .tabItem {
                             Label("Settings", systemImage: "gear")
                         }
+                        .tag(2)
                 }
-                
+                .onAppear {
+                    // Make Home the default selected tab
+                    selection = 0
+                }
+
                 Spacer()
-                
+
                 // Status Bar
                 HStack {
                     Image(systemName: "info.circle.fill")
@@ -53,7 +66,7 @@ struct ContentView: View {
             .navigationTitle("IPA Signer")
         }
     }
-    
+
     private var statusMessage: String {
         if isProcessing {
             return "Processing..."
