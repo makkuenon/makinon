@@ -67,6 +67,10 @@ jobs:
             -derivedDataPath build/DerivedData \
             IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             SDKROOT=iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
             clean build 2>&1 | tee build-app.log || true
 
       - name: Package unsigned IPA (no signing) from DerivedData
@@ -127,6 +131,10 @@ jobs:
             -derivedDataPath build/DerivedData \
             IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             SDKROOT=iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
             archive 2>&1 | tee build.log
 
       - name: Check Archive
@@ -140,4 +148,3 @@ jobs:
             tail -200 build.log || true
             exit 1
           fi
-
