@@ -46,6 +46,10 @@ struct ContentView: View {
                     // Make Home the default selected tab
                     selection = 0
                 }
+                // Listen for requests to open the Signing tab
+                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenSigningTab"))) { _ in
+                    selection = 1
+                }
 
                 Spacer()
 
