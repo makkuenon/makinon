@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SmoothHomeView: View {
+    @EnvironmentObject var signingService: IPASigningService
     @State private var searchText: String = ""
     @State private var cards = [
         HomeCard(title: "Quick Sign", subtitle: "Sign an IPA quickly with default settings", icon: "bolt.fill"),
@@ -85,11 +86,19 @@ struct HomeCard: Identifiable {
 
 struct HomeCardView: View {
     let card: HomeCard
+    @EnvironmentObject var signingService: IPASigningService
     @State private var pressed = false
 
     var body: some View {
         Button(action: {
-            // placeholder for card action
+            // Quick Sign action: switch to signing tab and open file picker
+            if card.title == "Quick Sign" {
+                // Signal ContentView to open Signing tab
+                NotificationCenter.default.post(name: Notification.Name("OpenSigningTab"), object: nil)
+
+                // Trigger the signing service to show the file picker
+                signingService.openFilePicker = true
+            }
         }) {
             HStack {
                 ZStack {

@@ -7,14 +7,17 @@ class IPASigningService: ObservableObject {
     @Published var availableProfiles: [String] = []
     @Published var isSigningInProgress = false
     @Published var signingProgress: Double = 0
-    
+
+    // UI trigger to request opening a file picker from other views
+    @Published var openFilePicker: Bool = false
+
     private let certificateManager = CertificateManager.shared
     private let fileHandler = FileHandler.shared
-    
+
     init() {
         loadCertificatesAndProfiles()
     }
-    
+
     func loadCertificatesAndProfiles() {
         Task {
             do {
@@ -25,54 +28,58 @@ class IPASigningService: ObservableObject {
             }
         }
     }
-    
+
+    func triggerOpenFilePicker() {
+        openFilePicker = true
+    }
+
     func signIPA(at path: String, withCertificate certificate: String, andProfile profile: String) async throws -> String {
         let startTime = Date()
         isSigningInProgress = true
         signingProgress = 0
-        
+
         defer {
             isSigningInProgress = false
             signingProgress = 0
         }
-        
+
         do {
             // Step 1: Validate IPA file
             signingProgress = 0.1
             guard fileHandler.fileExists(at: path) else {
                 throw SigningError.fileNotFound
             }
-            
+
             // Step 2: Extract IPA
             signingProgress = 0.2
             let extractionPath = try fileHandler.extractIPA(at: path)
             defer { try? FileManager.default.removeItem(atPath: extractionPath) }
-            
+
             // Step 3: Get metadata
             signingProgress = 0.3
             _ = try parseIPAMetadata(at: extractionPath)
-            
+
             // Step 4: Replace provisioning profile
             signingProgress = 0.4
             try replaceProvisioningProfile(in: extractionPath, with: profile)
-            
+
             // Step 5: Update code signature
             signingProgress = 0.7
             try updateCodeSignature(in: extractionPath, with: certificate)
-            
+
             // Step 6: Repackage IPA
             signingProgress = 0.9
             let signedIPAPath = try fileHandler.repackageIPA(from: extractionPath, original: path)
-            
+
             signingProgress = 1.0
-            
+
             print("Successfully signed IPA in \(Date().timeIntervalSince(startTime))s")
             return signedIPAPath
         } catch {
             throw error
         }
     }
-    
+
     private func parseIPAMetadata(at path: String) throws -> IPAMetadata {
         // TODO: Parse the Info.plist from the extracted IPA
         // The infoPlistPath would be: "\(path)/Payload/*/Info.plist"
@@ -85,11 +92,11 @@ class IPASigningService: ObservableObject {
             frameworks: []
         )
     }
-    
+
     private func replaceProvisioningProfile(in path: String, with profile: String) throws {
         // Implement provisioning profile replacement
     }
-    
+
     private func updateCodeSignature(in path: String, with certificate: String) throws {
         // Implement code signature update
     }
@@ -102,7 +109,7 @@ enum SigningError: LocalizedError {
     case signingFailed(String)
     case extractionFailed
     case repackagingFailed
-    
+
     var errorDescription: String? {
         switch self {
         case .fileNotFound:
@@ -111,8 +118,8 @@ enum SigningError: LocalizedError {
             return "Invalid IPA structure"
         case .certificateNotFound:
             return "Certificate not found"
-        case .signingFailed(let reason):
-            return "Signing failed: \(reason)"
+        case .signingFailed(let msg):
+            return "Signing failed: \(msg)"
         case .extractionFailed:
             return "Failed to extract IPA"
         case .repackagingFailed:

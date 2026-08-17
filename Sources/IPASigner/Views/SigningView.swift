@@ -132,6 +132,13 @@ struct SigningView: View {
             Spacer()
         }
         .padding()
+        .onChange(of: signingService.openFilePicker) { newValue in
+            if newValue {
+                openFilePicker()
+                // reset trigger
+                signingService.openFilePicker = false
+            }
+        }
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
         } message: {
@@ -148,6 +155,9 @@ struct SigningView: View {
                 selectedIPAPath = url.path
             }
         }
+        #else
+        // iOS: you can implement UIDocumentPickerViewController here if needed
+        print("Open file picker requested (platform not macOS); implement UIDocumentPicker on iOS if desired")
         #endif
     }
     
