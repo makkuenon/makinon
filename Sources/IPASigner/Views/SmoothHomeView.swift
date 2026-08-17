@@ -96,8 +96,8 @@ struct HomeCardView: View {
                 // Signal ContentView to open Signing tab
                 NotificationCenter.default.post(name: Notification.Name("OpenSigningTab"), object: nil)
 
-                // Trigger the signing service to show the file picker
-                signingService.openFilePicker = true
+                // Trigger the signing service to show the file picker and enable quick sign
+                signingService.triggerOpenFilePicker(quickSign: true)
             }
         }) {
             HStack {

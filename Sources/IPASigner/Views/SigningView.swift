@@ -11,7 +11,12 @@ struct SigningView: View {
     @State private var statusMessage = ""
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
+    // iOS file importer
+    @State private var showDocumentPicker: Bool = false
+    // Quick sign confirmation for iOS
+    @State private var showQuickSignConfirmation: Bool = false
+
     var body: some View {
         VStack(spacing: 16) {
             // File Selection
@@ -134,10 +139,56 @@ struct SigningView: View {
         .padding()
         .onChange(of: signingService.openFilePicker) { newValue in
             if newValue {
+                #if os(iOS)
+                showDocumentPicker = true
+                #else
                 openFilePicker()
-                // reset trigger
+                #endif
                 signingService.openFilePicker = false
             }
+        }
+        // iOS file importer handling
+        .fileImporter(isPresented: $showDocumentPicker, allowedContentTypes: [UTType(filenameExtension: "ipa") ?? .data]) { result in
+            switch result {
+            case .success(let url):
+                // Use a security-scoped resource on macOS/iOS where necessary
+                selectedIPAPath = url.path
+
+                // If quick sign was requested, auto-select defaults and ask for confirmation
+                if signingService.quickSignMode {
+                    selectedCertificate = signingService.availableCertificates.first ?? ""
+                    selectedProfile = signingService.availableProfiles.first ?? ""
+
+                    if selectedCertificate.isEmpty || selectedProfile.isEmpty {
+                        // Can't quick-sign without defaults
+                        statusMessage = "No default certificate or profile available for Quick Sign"
+                        signingService.quickSignMode = false
+                    } else {
+                        showQuickSignConfirmation = true
+                    }
+                }
+
+            case .failure(let err):
+                errorMessage = err.localizedDescription
+                showError = true
+            }
+        }
+        .alert("Quick Sign", isPresented: $showQuickSignConfirmation) {
+            Button("Sign Now") {
+                Task {
+                    if let _ = selectedIPAPath {
+                        Task {
+                            await startQuickSignIfPossible()
+                        }
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                // user cancelled quick sign
+                signingService.quickSignMode = false
+            }
+        } message: {
+            Text("Sign the selected IPA using the default certificate and provisioning profile?")
         }
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
@@ -145,7 +196,7 @@ struct SigningView: View {
             Text(errorMessage)
         }
     }
-    
+
     private func openFilePicker() {
         #if os(macOS)
         let panel = NSOpenPanel()
@@ -153,11 +204,24 @@ struct SigningView: View {
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 selectedIPAPath = url.path
+
+                if signingService.quickSignMode {
+                    selectedCertificate = signingService.availableCertificates.first ?? ""
+                    selectedProfile = signingService.availableProfiles.first ?? ""
+
+                    if selectedCertificate.isEmpty || selectedProfile.isEmpty {
+                        statusMessage = "No default certificate or profile available for Quick Sign"
+                        signingService.quickSignMode = false
+                    } else {
+                        // Automatically start signing on macOS quick sign
+                        Task { await startQuickSignIfPossible() }
+                    }
+                }
             }
         }
         #else
-        // iOS: you can implement UIDocumentPickerViewController here if needed
-        print("Open file picker requested (platform not macOS); implement UIDocumentPicker on iOS if desired")
+        // iOS fallback - should be handled by fileImporter
+        print("Open file picker requested (platform not macOS); using fileImporter where available")
         #endif
     }
     
@@ -181,6 +245,29 @@ struct SigningView: View {
             }
             isProcessing = false
         }
+    }
+
+    private func startQuickSignIfPossible() async {
+        guard let ipaPath = selectedIPAPath else { return }
+        guard !selectedCertificate.isEmpty && !selectedProfile.isEmpty else { return }
+
+        isProcessing = true
+        statusMessage = "Quick signing..."
+
+        do {
+            let signedPath = try await signingService.signIPA(
+                at: ipaPath,
+                withCertificate: selectedCertificate,
+                andProfile: selectedProfile
+            )
+            statusMessage = "Successfully signed IPA: \(URL(fileURLWithPath: signedPath).lastPathComponent)"
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+
+        isProcessing = false
+        signingService.quickSignMode = false
     }
 }
 

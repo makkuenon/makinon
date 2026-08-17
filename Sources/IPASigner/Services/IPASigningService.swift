@@ -10,6 +10,8 @@ class IPASigningService: ObservableObject {
 
     // UI trigger to request opening a file picker from other views
     @Published var openFilePicker: Bool = false
+    // When true, after picking an IPA the view should attempt a Quick Sign (auto-select first cert/profile)
+    @Published var quickSignMode: Bool = false
 
     private let certificateManager = CertificateManager.shared
     private let fileHandler = FileHandler.shared
@@ -29,7 +31,8 @@ class IPASigningService: ObservableObject {
         }
     }
 
-    func triggerOpenFilePicker() {
+    func triggerOpenFilePicker(quickSign: Bool = false) {
+        quickSignMode = quickSign
         openFilePicker = true
     }
 
@@ -41,6 +44,8 @@ class IPASigningService: ObservableObject {
         defer {
             isSigningInProgress = false
             signingProgress = 0
+            // Reset quick sign after an attempted signing
+            quickSignMode = false
         }
 
         do {
